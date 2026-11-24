@@ -1,0 +1,778 @@
+@import 'tailwindcss';
+
+/* VNDB Explorer — Modern Dark Minimal. Tokens follow docs/DESIGN.md §0 and §3.
+   Dark is the default and lives on :root, so the first paint is right even
+   before the inline script in app.html runs. That script sets data-theme from
+   localStorage (dark unless the reader chose light or system). */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ───────────────────────── Raw values: dark (default) ───────────────────────── */
+:root,
+[data-theme='dark'] {
+	color-scheme: dark;
+
+	/* Surfaces: cool-neutral graphite, one tonal step per level. No pure black. */
+	--canvas: #0f1115; /* page canvas */
+	--surface: #14171d; /* panels, chart plots */
+	--surface-raised: #1a1e26; /* popovers, autocomplete */
+	--surface-sunken: #1c2029; /* tonal fill: table heads, tracks, kbd, quiet chips */
+	--surface-hover: #232833; /* row and item hover */
+	--surface-inverse: #f3f5f8; /* primary button, slot A */
+	--selected: #2b313d; /* selected segment, current page */
+	--tooltip: #262b36;
+	--tooltip-ink: #f3f5f8;
+
+	/* Controls: translucent so they sit on any surface level. */
+	--control: rgb(255 255 255 / 0.04);
+	--control-hover: rgb(255 255 255 / 0.08);
+
+	/* Rules: translucent hairlines, never a boxed outline. */
+	--rule: rgb(255 255 255 / 0.08); /* row dividers, panel edges */
+	--rule-strong: rgb(255 255 255 / 0.14); /* control borders, axis lines */
+	--rule-hover: rgb(255 255 255 / 0.28); /* control border on hover */
+
+	/* Ink: one job per level (DESIGN §4.2). Ratios are on surface. */
+	--ink: #f3f5f8; /* titles, names, values, primary verdicts   16.4:1 */
+	--ink-2: #b1bbcd; /* subtitles, descriptions, prose             9.3:1 */
+	--ink-3: #8791a3; /* quiet meta, micro-labels, column heads     5.7:1 (5.1 on sunken, 4.6 on hover) */
+	--ink-4: #4b5364; /* non-text only: empty marks, disabled glyphs */
+	--ink-inverse: #0f1115;
+
+	/* Epistemic pair: carried by glyphs, edges, badges and meters, never by a title. */
+	--confirmed: #86acea; /* slate blue — ✓ glyph, solid edges, badge text   7.8:1 on surface */
+	--confirmed-tint: rgb(134 172 234 / 0.07);
+	--confirmed-edge: color-mix(in oklab, var(--confirmed) 38%, transparent); /* zone border */
+	--inferred: #d8b982; /* sand — ◇? glyph, dashed edges, badge text       9.6:1 on surface */
+	--inferred-mark: #c9a96e; /* meter fill, hatch stroke */
+	--inferred-tint: rgb(216 185 130 / 0.06);
+	--inferred-edge: color-mix(in oklab, var(--inferred) 50%, transparent); /* zone border, 3.0:1 */
+
+	/* Relation kind — graph edges + class badges (all pairs ≥ 15 OKLab apart, CVD included) */
+	--rel-ownership: #827ecc; /* sub-brand / imprint / subsidiary / parent */
+	--rel-sister: #66c3cf; /* sister brand */
+	--rel-lineage: #be6866; /* successor / spinoff / renamed */
+	--rel-partner: #c9e08c; /* co-dev partner */
+
+	/* Potential-alias confidence tiers — one-hue ordinal ramp, brightest = most confident */
+	--alias-high: #ebcd95;
+	--alias-medium: #b79a64;
+	--alias-speculative: #8a703f;
+
+	/* Staff roles — marks only (all seven: every pair ≥ 8 OKLab apart, CVD included) */
+	--role-director: #c97b60;
+	--role-scenario: #4683c5;
+	--role-chardesign: #e0a1b6;
+	--role-art: #b19beb;
+	--role-music: #e2e180;
+	--role-seiyuu: #76e1ec;
+	--role-other: #8791a3; /* neutral; drawn outlined, never filled */
+
+	/* Compare A/B — neutral pair, position and labels do the real work */
+	--cmp-a: #c3cad6;
+	--cmp-b: #7a8496;
+
+	/* Status (errors only; never a series colour) */
+	--danger: #f08277;
+
+	--focus: #7db4ff;
+	--scrim: rgb(4 6 10 / 0.62);
+	--pop-shadow: 0 0 0 1px rgb(255 255 255 / 0.05), 0 16px 40px -12px rgb(0 0 0 / 0.7);
+
+	/* Font stacks. The CJK part is swapped per :lang() below. */
+	--latin-sans: 'Inter';
+	--latin-mono: 'JetBrains Mono';
+	--cjk-sans: 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic UI', 'Meiryo';
+}
+
+/* ───────────────────────── Raw values: light (secondary) ───────────────────────── */
+[data-theme='light'] {
+	color-scheme: light;
+
+	--canvas: #f5f6f8;
+	--surface: #ffffff;
+	--surface-raised: #ffffff;
+	--surface-sunken: #eef0f4;
+	--surface-hover: #e5e8ee;
+	--surface-inverse: #14171d;
+	--selected: #ffffff;
+	--tooltip: #1b1f27;
+	--tooltip-ink: #f3f5f8;
+
+	--control: #ffffff;
+	--control-hover: #f3f4f7;
+
+	--rule: rgb(15 17 21 / 0.08);
+	--rule-strong: rgb(15 17 21 / 0.15);
+	--rule-hover: rgb(15 17 21 / 0.34);
+
+	--ink: #14171d; /* 17.9:1 on surface */
+	--ink-2: #3b4351; /* 10.0:1 */
+	--ink-3: #5f6878; /*  5.6:1 (4.9 on sunken, 4.6 on hover) */
+	--ink-4: #a4acba;
+	--ink-inverse: #f5f6f8;
+
+	--confirmed: #31559a; /* 7.2:1 on surface */
+	--confirmed-tint: rgb(49 85 154 / 0.07);
+	--confirmed-edge: color-mix(in oklab, var(--confirmed) 38%, transparent);
+	--inferred: #77581c; /* 6.6:1 on surface */
+	--inferred-mark: #936d24;
+	--inferred-tint: rgb(147 109 36 / 0.08);
+	--inferred-edge: color-mix(in oklab, var(--inferred) 64%, transparent); /* 3.0:1 */
+
+	--rel-ownership: #403c83;
+	--rel-sister: #057d82;
+	--rel-lineage: #6b3443;
+	--rel-partner: #5c6721;
+
+	/* Ramp flips: darkest = most confident on a light ground */
+	--alias-high: #5b4315;
+	--alias-medium: #876114;
+	--alias-speculative: #9f7932;
+
+	--role-director: #9f322f;
+	--role-scenario: #1d6eb1;
+	--role-chardesign: #9f526f;
+	--role-art: #53437b;
+	--role-music: #8e7c1a;
+	--role-seiyuu: #015255;
+	--role-other: #727b8c;
+
+	--cmp-a: #454d5c;
+	--cmp-b: #778191; /* 3.2:1 on hover, the lightest ground a bar can meet */
+
+	--danger: #b42318;
+
+	--focus: #2f6fed;
+	--scrim: rgb(15 17 21 / 0.38);
+	--pop-shadow: 0 0 0 1px rgb(15 17 21 / 0.04), 0 12px 32px -10px rgb(15 17 21 / 0.22);
+}
+
+/* Han glyph variants differ by language. The element that carries `lang`
+   must also carry the font utility (font-sans) so these resolve. */
+:lang(zh-Hans),
+:lang(zh) {
+	--cjk-sans: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei';
+}
+:lang(zh-Hant) {
+	--cjk-sans: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei';
+}
+:lang(ko) {
+	--cjk-sans: 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic';
+}
+
+/* ───────────────────────── Tailwind theme ───────────────────────── */
+@theme inline {
+	/* Wipe Tailwind's default palette: only semantic colours exist. */
+	--color-*: initial;
+
+	--color-transparent: transparent;
+	--color-current: currentColor;
+
+	--color-canvas: var(--canvas);
+	--color-surface: var(--surface);
+	--color-surface-raised: var(--surface-raised);
+	--color-surface-sunken: var(--surface-sunken);
+	--color-surface-hover: var(--surface-hover);
+	--color-surface-inverse: var(--surface-inverse);
+	--color-selected: var(--selected);
+	--color-tooltip: var(--tooltip);
+	--color-tooltip-ink: var(--tooltip-ink);
+	--color-control: var(--control);
+	--color-control-hover: var(--control-hover);
+	--color-scrim: var(--scrim);
+
+	--color-rule: var(--rule);
+	--color-rule-strong: var(--rule-strong);
+	--color-rule-hover: var(--rule-hover);
+
+	--color-ink: var(--ink);
+	--color-ink-2: var(--ink-2);
+	--color-ink-3: var(--ink-3);
+	--color-ink-4: var(--ink-4);
+	--color-ink-inverse: var(--ink-inverse);
+
+	--color-danger: var(--danger);
+	--color-focus: var(--focus);
+
+	--color-confirmed: var(--confirmed);
+	--color-confirmed-tint: var(--confirmed-tint);
+	--color-confirmed-edge: var(--confirmed-edge);
+	--color-inferred: var(--inferred);
+	--color-inferred-edge: var(--inferred-edge);
+	--color-inferred-mark: var(--inferred-mark);
+	--color-inferred-tint: var(--inferred-tint);
+
+	--color-rel-ownership: var(--rel-ownership);
+	--color-rel-sister: var(--rel-sister);
+	--color-rel-lineage: var(--rel-lineage);
+	--color-rel-partner: var(--rel-partner);
+
+	/* Inferred class → relation kind (aliases, so class names read naturally) */
+	--color-class-subbrand: var(--rel-ownership);
+	--color-class-sister: var(--rel-sister);
+	--color-class-successor: var(--rel-lineage);
+	--color-class-partner: var(--rel-partner);
+
+	--color-alias-confirmed: var(--confirmed);
+	--color-alias-high: var(--alias-high);
+	--color-alias-medium: var(--alias-medium);
+	--color-alias-speculative: var(--alias-speculative);
+
+	--color-role-director: var(--role-director);
+	--color-role-scenario: var(--role-scenario);
+	--color-role-chardesign: var(--role-chardesign);
+	--color-role-art: var(--role-art);
+	--color-role-music: var(--role-music);
+	--color-role-seiyuu: var(--role-seiyuu);
+	--color-role-other: var(--role-other);
+
+	--color-cmp-a: var(--cmp-a);
+	--color-cmp-b: var(--cmp-b);
+
+	/* One family for everything read; mono only for ids, years, scores, counts. */
+	--font-sans: var(--latin-sans), var(--cjk-sans), system-ui, sans-serif;
+	--font-mono:
+		var(--latin-mono), var(--cjk-sans), ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+	--shadow-pop: var(--pop-shadow);
+}
+
+@theme {
+	/* Type scale (rem at 16px root) */
+	--text-2xs: 0.6875rem;
+	--text-2xs--line-height: 1rem; /* 11 / 16  axis ticks, ids, codes */
+	--text-xs: 0.75rem;
+	--text-xs--line-height: 1rem; /* 12 / 16  meta, chips, column labels, CJK floor */
+	--text-sm: 0.8125rem;
+	--text-sm--line-height: 1.25rem; /* 13 / 20  table cells */
+	--text-base: 0.875rem;
+	--text-base--line-height: 1.375rem; /* 14 / 22  body, controls */
+	--text-md: 1rem;
+	--text-md--line-height: 1.5rem; /* 16 / 24  lead, panel titles, verdicts */
+	--text-lg: 1.1875rem;
+	--text-lg--line-height: 1.625rem; /* 19 / 26  section heads */
+	--text-xl: 1.5rem;
+	--text-xl--line-height: 1.875rem; /* 24 / 30  stat values, drawer titles */
+	--text-2xl: 1.875rem;
+	--text-2xl--line-height: 2.25rem; /* 30 / 36  entity name, page title */
+	--text-3xl: 2.5rem;
+	--text-3xl--line-height: 2.75rem; /* 40 / 44  home question only */
+
+	--font-weight-normal: 400;
+	--font-weight-medium: 500;
+	--font-weight-semibold: 600;
+	--font-weight-bold: 700;
+
+	--tracking-tight: -0.015em; /* section heads */
+	--tracking-tighter: -0.025em; /* page titles, the home question */
+
+	/* 4px grid: p-1 = 4px … p-14 = 56px */
+	--spacing: 0.25rem;
+
+	/* Radius grows with the size of the thing: marks, controls, panels, overlays. */
+	--radius-xs: 4px; /* chips, badges, meter segments */
+	--radius-sm: 6px; /* inputs, buttons, segmented controls, table heads */
+	--radius-md: 10px; /* panels, chart plots */
+	--radius-lg: 14px; /* popovers, drawers */
+	--radius-pill: 9999px; /* person pills only */
+
+	--breakpoint-sm: 40rem; /*  640 */
+	--breakpoint-md: 56rem; /*  896 */
+	--breakpoint-lg: 72rem; /* 1152 */
+	--breakpoint-xl: 90rem; /* 1440 */
+
+	--container-page: 90rem;
+	--container-reading: 42rem;
+
+	--ease-out-quiet: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* ───────────────────────── Base ───────────────────────── */
+@layer base {
+	html {
+		background: var(--canvas);
+		color: var(--ink);
+		font-family: var(--latin-sans), var(--cjk-sans), system-ui, sans-serif;
+		font-size: 100%;
+		-webkit-font-smoothing: antialiased;
+		text-rendering: optimizeLegibility;
+		scroll-padding-top: 104px;
+	}
+	body {
+		font-size: 0.875rem;
+		line-height: 1.375rem;
+		min-height: 100vh;
+		/* `clip`, not `hidden`: hidden makes the body a scroll container, and a
+		   sticky bar (SectionNav) then sticks to it instead of the viewport. */
+		overflow-x: clip;
+	}
+	:focus-visible {
+		outline: 2px solid var(--focus);
+		outline-offset: 2px;
+		border-radius: 4px;
+	}
+	::selection {
+		background: color-mix(in oklab, var(--confirmed) 32%, transparent);
+	}
+	/* CJK has no italic. Never synthesise an oblique for it. */
+	:lang(ja),
+	:lang(zh),
+	:lang(zh-Hans),
+	:lang(zh-Hant),
+	:lang(ko) {
+		font-style: normal;
+		font-synthesis: none;
+		letter-spacing: 0;
+	}
+	[id] {
+		scroll-margin-top: 104px;
+	}
+	button,
+	[role='button'],
+	summary {
+		cursor: pointer;
+	}
+	button:disabled {
+		cursor: default;
+	}
+	svg text {
+		font-family: var(--latin-sans), var(--cjk-sans), system-ui, sans-serif;
+	}
+	svg text.mono {
+		font-family: var(--latin-mono), var(--cjk-sans), ui-monospace, monospace;
+	}
+	::placeholder {
+		color: var(--ink-3);
+		opacity: 1;
+	}
+	input[type='search']::-webkit-search-cancel-button {
+		display: none;
+	}
+	kbd {
+		font-family: var(--latin-mono), ui-monospace, monospace;
+	}
+	select option {
+		background-color: var(--surface-raised);
+		color: var(--ink);
+	}
+}
+
+/* ───────────────────────── Utilities ───────────────────────── */
+/* Numbers that align in columns. */
+@utility tnum {
+	font-variant-numeric: tabular-nums lining-nums;
+	font-feature-settings:
+		'tnum' 1,
+		'lnum' 1;
+}
+
+/* Small sentence-case label: zone headers, badges, column heads. Never capitals,
+   never tracked: the register's colour and glyph carry the meaning. */
+@utility caption {
+	font-size: 0.75rem;
+	line-height: 1rem;
+	font-weight: 500;
+	letter-spacing: 0;
+}
+
+/* The pencil fill: a whisper-fine hatch on any inferred surface or bar. */
+@utility hatch-inferred {
+	background-image: repeating-linear-gradient(
+		135deg,
+		color-mix(in oklab, var(--inferred-mark) 13%, transparent) 0 1px,
+		transparent 1px 8px
+	);
+}
+/* Neutral hatch for "excluded by the current lens" (capped people, filtered-out roles). */
+@utility hatch-muted {
+	background-image: repeating-linear-gradient(
+		135deg,
+		color-mix(in oklab, var(--ink-3) 22%, transparent) 0 1px,
+		transparent 1px 7px
+	);
+}
+
+/* Text links: ink with a hairline underline (§5.10). */
+@utility link {
+	color: var(--ink);
+	text-decoration-line: underline;
+	text-decoration-thickness: 1px;
+	text-underline-offset: 3px;
+	text-decoration-color: var(--rule-hover);
+	transition: text-decoration-color 120ms cubic-bezier(0.2, 0, 0, 1);
+	&:hover {
+		text-decoration-color: var(--ink);
+	}
+}
+/* Entity links inside tables: not underlined until hover. */
+@utility link-quiet {
+	color: inherit;
+	text-decoration-line: none;
+	&:hover {
+		text-decoration-line: underline;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 3px;
+		text-decoration-color: var(--ink-2);
+	}
+}
+
+/* Explained domain term: a quiet dotted underline signals a hover definition. */
+@utility term {
+	cursor: help;
+	text-decoration-line: underline;
+	text-decoration-style: dotted;
+	text-decoration-thickness: 1px;
+	text-underline-offset: 3px;
+	text-decoration-color: var(--rule-hover);
+	&:hover {
+		text-decoration-color: var(--ink-2);
+	}
+}
+
+/* Panel: the level-1 surface for a discrete object (a chart, a verdict, an
+   epistemic zone, a quick-jump module). Tables and filters sit on the canvas. */
+@utility sheet {
+	background: var(--surface);
+	border: 1px solid var(--rule);
+	border-radius: 10px;
+}
+
+/* Buttons: neutral fills, one high-contrast primary (§5.10). */
+@utility btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	height: 32px;
+	padding: 0 12px;
+	border-radius: 6px;
+	border: 1px solid var(--rule-strong);
+	background: var(--control);
+	color: var(--ink);
+	font-size: 0.8125rem;
+	line-height: 1.25rem;
+	font-weight: 500;
+	white-space: nowrap;
+	transition:
+		border-color 120ms cubic-bezier(0.2, 0, 0, 1),
+		background-color 120ms cubic-bezier(0.2, 0, 0, 1);
+	&:hover:not(:disabled) {
+		border-color: var(--rule-hover);
+		background: var(--control-hover);
+	}
+	/* One disabled look for every button, primary included: a quiet fill with
+	   tertiary ink (4.8:1), never the inverse fill behind dimmed text. */
+	&:disabled {
+		background: var(--surface-sunken);
+		border-color: var(--rule);
+		color: var(--ink-3);
+	}
+}
+@utility btn-primary {
+	background: var(--surface-inverse);
+	border-color: var(--surface-inverse);
+	color: var(--ink-inverse);
+	font-weight: 600;
+	&:hover:not(:disabled) {
+		background: color-mix(in oklab, var(--surface-inverse) 88%, var(--canvas));
+		border-color: color-mix(in oklab, var(--surface-inverse) 88%, var(--canvas));
+	}
+}
+@utility btn-sm {
+	height: 28px;
+	padding: 0 8px;
+	font-size: 0.75rem;
+	line-height: 1rem;
+}
+@utility btn-ghost {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	color: var(--ink-2);
+	font-size: 0.8125rem;
+	line-height: 1.25rem;
+	font-weight: 500;
+	text-decoration-line: none;
+	transition: color 120ms cubic-bezier(0.2, 0, 0, 1);
+	&:hover {
+		color: var(--ink);
+		text-decoration-line: underline;
+		text-underline-offset: 3px;
+		text-decoration-color: var(--rule-hover);
+	}
+}
+
+/* Inputs. */
+@utility field {
+	height: 32px;
+	padding: 0 10px;
+	border-radius: 6px;
+	border: 1px solid var(--rule-strong);
+	background: var(--control);
+	color: var(--ink);
+	font-size: 0.8125rem;
+	line-height: 1.25rem;
+	transition: border-color 120ms cubic-bezier(0.2, 0, 0, 1);
+	&:hover {
+		border-color: var(--rule-hover);
+	}
+}
+
+/* Data tables: a tonal head, hairline rows, 32px rows. On the canvas the
+   wrapper rounds the head (`scroll-x rounded-sm`); inside a panel it does not. */
+@utility ledger {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.8125rem;
+	line-height: 1.25rem;
+	& th {
+		position: sticky;
+		top: 0;
+		z-index: 1;
+		background: var(--surface-sunken);
+		color: var(--ink-3);
+		font-size: 0.75rem;
+		line-height: 1rem;
+		font-weight: 500;
+		text-align: left;
+		padding: 7px 12px;
+		white-space: nowrap;
+	}
+	& td {
+		padding: 5px 12px;
+		border-top: 1px solid var(--rule);
+		vertical-align: middle;
+		height: 32px;
+	}
+	& tbody tr:first-child td {
+		border-top-color: transparent;
+	}
+	& tbody tr.group-start td {
+		border-top: 1.5px solid var(--rule-strong);
+	}
+	& tbody tr:hover {
+		background: color-mix(in oklab, var(--surface-hover) 55%, transparent);
+	}
+	& .num {
+		text-align: right;
+		font-variant-numeric: tabular-nums lining-nums;
+	}
+}
+
+/* Horizontal scroller with a soft edge so wide tables and plots never push the page. */
+@utility scroll-x {
+	overflow-x: auto;
+	overscroll-behavior-x: contain;
+	scrollbar-width: thin;
+	scrollbar-color: var(--rule-strong) transparent;
+}
+
+/* Tab and section-nav strips: scroll sideways when they must, never vertically,
+   and without a scrollbar eating the strip's height (seen on Windows). */
+@utility tab-strip {
+	overflow-x: auto;
+	overflow-y: hidden;
+	overscroll-behavior-x: contain;
+	scrollbar-width: none;
+	&::-webkit-scrollbar {
+		display: none;
+	}
+}
+@utility no-scrollbar {
+	scrollbar-width: none;
+	&::-webkit-scrollbar {
+		display: none;
+	}
+}
+
+/* A panel's register, carried by its edge. Deliberately unlayered: these must
+   win over the layered `sheet` utility whatever order Tailwind emits it in.
+   Solid for VNDB's records, dashed for inference; the glyph and label in the
+   panel's header say the same thing in words. The edge is the only part of a
+   panel that takes the register's hue: its title stays ink. */
+.zone-confirmed {
+	border: 1px solid var(--confirmed-edge);
+}
+.zone-inferred {
+	border: 1px dashed var(--inferred-edge);
+}
+/* Linked inferred panels: these rules are unlayered, so a hover utility could
+   never reach the border. State it here instead. */
+a.zone-inferred {
+	transition:
+		border-color 120ms cubic-bezier(0.2, 0, 0, 1),
+		background-color 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+a.zone-inferred:hover,
+.zone-inferred.is-interactive:hover {
+	border-color: var(--inferred);
+	background-color: color-mix(in oklab, var(--surface) 70%, var(--surface-hover));
+}
+
+@layer components {
+	/* Filter chip: a toggle in a row of filters. Off is a quiet outline; on is a
+	   tonal fill, a firmer edge and a tick. Never an inverse fill: that would
+	   sink the coloured swatch inside a chip below 3:1. */
+	.fchip {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 0 9px;
+		border-radius: 6px;
+		border: 1px solid var(--rule-strong);
+		background: transparent;
+		color: var(--ink-2);
+		white-space: nowrap;
+		transition:
+			background-color 120ms cubic-bezier(0.2, 0, 0, 1),
+			border-color 120ms cubic-bezier(0.2, 0, 0, 1),
+			color 120ms cubic-bezier(0.2, 0, 0, 1);
+	}
+	.fchip:hover {
+		border-color: var(--rule-hover);
+		color: var(--ink);
+	}
+	.fchip[aria-pressed='true'] {
+		background: var(--selected);
+		border-color: var(--rule-hover);
+		color: var(--ink);
+		font-weight: 500;
+	}
+
+	/* Skeleton pulse: opacity only, no shimmer. */
+	.skeleton {
+		background: var(--surface-sunken);
+		border-radius: 4px;
+		animation: vx-pulse 1.2s ease-in-out infinite;
+	}
+	@keyframes vx-pulse {
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.55;
+		}
+	}
+	/* 2px indeterminate bar for refetches. */
+	.refetch-bar {
+		position: relative;
+		height: 2px;
+		overflow: hidden;
+		background: var(--rule);
+	}
+	.refetch-bar::after {
+		content: '';
+		position: absolute;
+		inset: 0 auto 0 0;
+		width: 30%;
+		background: var(--focus);
+		animation: vx-slide 1.1s cubic-bezier(0.2, 0, 0, 1) infinite;
+	}
+	@keyframes vx-slide {
+		from {
+			transform: translateX(-100%);
+		}
+		to {
+			transform: translateX(440%);
+		}
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation: none !important;
+		transition: none !important;
+		scroll-behavior: auto !important;
+	}
+}
+
+/* Forced colours (Windows High Contrast, DESIGN §10.1). The system palette
+   replaces every tint, so line style has to carry the register by itself:
+   solid for VNDB's records, dashed for inference. Borders keep their style
+   there, but gradients are dropped, and the pencil hatch is a gradient: it is
+   restated here as a real dashed line. */
+@media (forced-colors: active) {
+	:focus-visible {
+		outline: 2px solid Highlight;
+		outline-offset: 2px;
+	}
+	.zone-confirmed {
+		border: 1px solid CanvasText;
+	}
+	.zone-inferred {
+		border: 1px dashed CanvasText;
+	}
+	/* A hatched surface loses its hatch: a dashed edge marks it instead. */
+	.hatch-inferred {
+		outline: 1px dashed CanvasText;
+		outline-offset: -1px;
+	}
+	/* The fill of a selected segment, tab or pressed toggle is dropped too: the
+	   system selection colours stand in for it. */
+	[role='radio'][aria-checked='true'],
+	[role='tab'][aria-selected='true'],
+	button[aria-pressed='true'] {
+		forced-color-adjust: none;
+		background-color: Highlight;
+		color: HighlightText;
+	}
+}
+
+/* Print: the sheet is white whatever the screen theme, so the light tokens
+   are restated here. Line style and hatch are kept, tints dropped. */
+@media print {
+	:root,
+	[data-theme] {
+		color-scheme: light;
+		--canvas: #ffffff;
+		--surface: #ffffff;
+		--surface-raised: #ffffff;
+		--surface-sunken: #eef0f4;
+		--surface-hover: #eef0f4;
+		--surface-inverse: #14171d;
+		--selected: #ffffff;
+		--control: #ffffff;
+		--control-hover: #ffffff;
+		--rule: rgb(15 17 21 / 0.14);
+		--rule-strong: rgb(15 17 21 / 0.3);
+		--rule-hover: rgb(15 17 21 / 0.3);
+		--ink: #14171d;
+		--ink-2: #3b4351;
+		--ink-3: #5f6878;
+		--ink-4: #a4acba;
+		--ink-inverse: #ffffff;
+		--confirmed: #31559a;
+		--confirmed-tint: transparent;
+		--confirmed-edge: color-mix(in oklab, var(--confirmed) 38%, transparent);
+		--inferred: #77581c;
+		--inferred-mark: #936d24;
+		--inferred-tint: transparent;
+		--inferred-edge: color-mix(in oklab, var(--inferred) 64%, transparent);
+		--rel-ownership: #403c83;
+		--rel-sister: #057d82;
+		--rel-lineage: #6b3443;
+		--rel-partner: #5c6721;
+		--alias-high: #5b4315;
+		--alias-medium: #876114;
+		--alias-speculative: #9f7932;
+		--role-director: #9f322f;
+		--role-scenario: #1d6eb1;
+		--role-chardesign: #9f526f;
+		--role-art: #53437b;
+		--role-music: #8e7c1a;
+		--role-seiyuu: #015255;
+		--role-other: #727b8c;
+		--cmp-a: #454d5c;
+		--cmp-b: #778191;
+		--danger: #b42318;
+	}
+	html {
+		background: var(--canvas);
+	}
+	.no-print {
+		display: none !important;
+	}
+}

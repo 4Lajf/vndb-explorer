@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="color-scheme" content="dark light" />
+		<meta name="theme-color" content="#0f1115" />
+		<meta property="og:type" content="website" />
+		<meta property="og:site_name" content="VNDB Explorer" />
+		<meta property="og:title" content="VNDB Explorer" />
+		<meta
+			property="og:description"
+			content="Visual novel studio atlas, staff career timelines, and unrecorded brand relationships built from the VNDB dump."
+		/>
+		<meta property="og:image" content="/og-image.png" />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta property="og:image:alt" content="VNDB Explorer — Studio atlas and staff lineages" />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content="VNDB Explorer" />
+		<meta
+			name="twitter:description"
+			content="Visual novel studio atlas, staff career timelines, and unrecorded brand relationships built from the VNDB dump."
+		/>
+		<meta name="twitter:image" content="/og-image.png" />
+		<link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
+		<script>
+			// No-flash theme: runs before first paint. Dark is the default. A stored
+			// 'light' wins; a stored 'system' follows the OS preference. The key is
+			// the one prefs.svelte.ts writes. The two colours below are the --canvas
+			// token of each theme (app.css): the stylesheet has not loaded yet, so
+			// they are the one place a token value is repeated.
+			(function () {
+				var root = document.documentElement;
+				var theme = 'dark';
+				try {
+					var stored = localStorage.getItem('vndb-explorer:theme');
+					if (stored === 'light') {
+						theme = 'light';
+					} else if (stored === 'system') {
+						var mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)');
+						if (mq && mq.matches) theme = 'light';
+					}
+				} catch (e) {
+					/* storage unavailable: keep the dark default */
+				}
+				root.setAttribute('data-theme', theme);
+				var meta = document.querySelector('meta[name="theme-color"]');
+				if (meta) meta.setAttribute('content', theme === 'light' ? '#f5f6f8' : '#0f1115');
+			})();
+		</script>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400;1,14..32,500&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;700&display=swap"
+			rel="stylesheet"
+		/>
+		%sveltekit.head%
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
+</html>
