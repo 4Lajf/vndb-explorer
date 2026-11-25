@@ -54,10 +54,17 @@
 	const atlasPending = $derived(navigating.to?.url.pathname === '/');
 
 	function onScopeChange(patch: { producerType?: 'co' | 'all'; lang?: string; minConfidence?: number }) {
-		const next = {
+		const sp = page.url.searchParams;
+		const next: Record<string, string | null> = {
 			producerType: patch.producerType ?? data.atlas.filters.producerType,
 			lang: patch.lang ?? data.atlas.filters.lang,
-			minConfidence: String(patch.minConfidence ?? data.atlas.filters.minConfidence)
+			minConfidence: String(patch.minConfidence ?? data.atlas.filters.minConfidence),
+			mode: sp.get('mode'),
+			focus: sp.get('focus'),
+			trace: sp.get('trace'),
+			compareTrace: sp.get('compareTrace'),
+			compare: sp.get('compare'),
+			vn: sp.get('vn')
 		};
 		const qs = buildQuery(next, DEFAULTS);
 		void goto(`/${qs}`, { reset: false, replaceState: true });
@@ -92,7 +99,10 @@
 				if (m) return { key: `atlas-cmp:${urlMode}:${m[1]}-${m[2]}`, kind: 'compare', id: m[1], secondId: m[2], mode: urlMode };
 			}
 			const focus = sp.get('focus')?.trim().toLowerCase();
-			if (focus) return { key: `atlas-focus:${urlMode}:${focus}`, kind: 'focus', id: focus, mode: urlMode };
+			if (focus) {
+				const scopeKey = `${data.atlas.filters.producerType}:${data.atlas.filters.lang}:${data.atlas.filters.minConfidence}`;
+				return { key: `atlas-focus:${urlMode}:${scopeKey}:${focus}`, kind: 'focus', id: focus, mode: urlMode };
+			}
 			return { key: `atlas-idle:${urlMode}`, kind: 'none', mode: urlMode };
 		}
 		const prodMatch = path.match(/^\/producer\/(p\d+)$/i);

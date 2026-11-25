@@ -9,7 +9,7 @@ export const load: LayoutServerLoad = ({ url }) => {
 		onAtlas && url.searchParams.get('producerType') === 'all' ? 'all' : 'co';
 	const lang = onAtlas ? url.searchParams.get('lang') || 'all' : 'all';
 	const minConfidence = onAtlas
-		? Math.min(1, Math.max(0.45, finiteNumber(url.searchParams.get('minConfidence'), 0.55)))
+		? Math.min(1, Math.max(0.1, finiteNumber(url.searchParams.get('minConfidence'), 0.55)))
 		: 0.55;
 
 	const graph = getLandscapeGraph({

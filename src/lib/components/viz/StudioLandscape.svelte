@@ -311,7 +311,9 @@
 		loading: boolean;
 		error: string | null;
 		producer: ProducerSummary | null;
-		hasLinks: boolean;
+		explicitCount: number;
+		inferredCount: number;
+		maxInferredConfidence: number | null;
 	}
 	let unmappedFocus = $state<UnmappedFocusState | null>(null);
 
@@ -944,26 +946,50 @@
 
 	async function focusUnmappedStudio(id: string, sync = true) {
 		clearOverlays(false, false);
-		unmappedFocus = { id, loading: true, error: null, producer: null, hasLinks: false };
+		unmappedFocus = {
+			id,
+			loading: true,
+			error: null,
+			producer: null,
+			explicitCount: 0,
+			inferredCount: 0,
+			maxInferredConfidence: null
+		};
 		if (sync) syncUrl({ focus: id, trace: null, compareTrace: null, vn: null, compare: null });
 		try {
 			const body = await fetchProof<{
 				producer?: ProducerSummary;
 				explicitRelations?: unknown[];
-				inferredRelations?: unknown[];
+				inferredRelations?: Array<{ confidence?: number; seiyuuDriven?: boolean }>;
 			}>(`/api/producers/${encodeURIComponent(id)}`);
 			if (unmappedFocus?.id !== id) return;
-			const hasLinks = (body.explicitRelations?.length ?? 0) > 0 || (body.inferredRelations?.length ?? 0) > 0;
+			const explicitCount = body.explicitRelations?.length ?? 0;
+			const coreInferred = (body.inferredRelations ?? []).filter((r) => !r.seiyuuDriven);
+			const inferredCount = coreInferred.length;
+			const maxInferredConfidence =
+				coreInferred.length > 0
+					? Math.max(...coreInferred.map((r) => Number(r.confidence ?? 0)))
+					: null;
 			unmappedFocus = {
 				id,
 				loading: false,
 				error: body.producer ? null : 'Studio not found.',
 				producer: body.producer ?? null,
-				hasLinks
+				explicitCount,
+				inferredCount,
+				maxInferredConfidence
 			};
 		} catch {
 			if (unmappedFocus?.id !== id) return;
-			unmappedFocus = { id, loading: false, error: 'Could not load studio details.', producer: null, hasLinks: false };
+			unmappedFocus = {
+				id,
+				loading: false,
+				error: 'Could not load studio details.',
+				producer: null,
+				explicitCount: 0,
+				inferredCount: 0,
+				maxInferredConfidence: null
+			};
 		}
 	}
 
@@ -3709,7 +3735,7 @@
 								</div>
 								<input
 									type="range"
-									min="45"
+									min="10"
 									max="95"
 									step="5"
 									class="mt-1 w-full accent-(--inferred-mark)"
@@ -4449,21 +4475,46 @@
 
 				{#if unmappedFocus.producer}
 					{@const up = unmappedFocus.producer}
+					{@const hasAnyLinks = unmappedFocus.explicitCount > 0 || unmappedFocus.inferredCount > 0}
+					{@const minScore = Math.round(minConfidence * 100)}
+					{@const bestScore = unmappedFocus.maxInferredConfidence != null ? Math.round(unmappedFocus.maxInferredConfidence * 100) : null}
 					<p class="mt-2 rounded-sm border border-rule bg-surface px-2.5 py-1.5 text-ink-2">
-						{#if unmappedFocus.hasLinks}
-							Hidden by current Atlas filters (e.g. Companies only or cluster size).
+						{#if !hasAnyLinks}
+							Standalone studio — no VNDB brand links or inferred overlaps recorded.
+						{:else if producerType === 'co' && up.type !== 'co'}
+							Hidden because the Atlas is currently set to Companies only.
+						{:else if lang !== 'all' && up.lang !== lang}
+							Hidden by the current language filter ({lang.toUpperCase()}).
+						{:else if unmappedFocus.explicitCount === 0 && mode === 'explicit'}
+							No explicit VNDB brand links (switch mode to All or Hidden links to inspect inferred connections).
+						{:else if unmappedFocus.explicitCount === 0 && bestScore != null && unmappedFocus.maxInferredConfidence! < minConfidence}
+							No VNDB brand links; strongest inferred link is {bestScore} (below the Atlas confidence threshold of {minScore}).
+						{:else if mode === 'hidden' && unmappedFocus.explicitCount > 0 && (bestScore == null || unmappedFocus.maxInferredConfidence! < minConfidence)}
+							No inferred links above {minScore} confidence in Hidden links mode (has {plural(unmappedFocus.explicitCount, 'VNDB link')}).
 						{:else}
-							Standalone studio — not plotted on the Atlas (no brand links recorded).
+							Hidden by current Atlas filters (e.g. Companies only or cluster size ≥ {minClusterSize}).
 						{/if}
 					</p>
 					<div class="mt-2.5 flex flex-wrap items-center gap-1.5">
-						{#if unmappedFocus.hasLinks && hasCustomFilters}
+						{#if unmappedFocus.explicitCount === 0 && bestScore != null && unmappedFocus.maxInferredConfidence! < minConfidence && bestScore >= 10}
+							{@const targetScore = Math.max(10, Math.floor(bestScore / 5) * 5)}
 							<button
 								type="button"
 								class="btn btn-sm"
 								onclick={() => {
 									minClusterSize = 2;
-									onScopeChange({ producerType: 'all', lang: 'all', minConfidence: 0.45 });
+									onScopeChange({ minConfidence: targetScore / 100 });
+								}}
+							>
+								Lower confidence to {targetScore}
+							</button>
+						{:else if hasAnyLinks && (hasCustomFilters || (producerType === 'co' && up.type !== 'co'))}
+							<button
+								type="button"
+								class="btn btn-sm"
+								onclick={() => {
+									minClusterSize = 2;
+									onScopeChange({ producerType: 'all', lang: 'all', minConfidence: 0.15 });
 								}}
 							>
 								Show all studios
