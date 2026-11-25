@@ -586,9 +586,10 @@
 				isFocus: n.id === selectedNode.id,
 				group: groupOf(n.id)
 			}));
+		const inferredEdgesCount = includedEdges.filter((e) => e.register === 'inferred').length;
 		exportTimelineSubgraphPng({
 			title: `${shownName(selectedNode.name, selectedNode.original)}${chainOutgoing ? ' — Link Chain' : ' — Studio Connections'}`,
-			subtitle: `${exportNodes.length} studios · ${includedEdges.length} links`,
+			subtitle: `${exportNodes.length} studios · ${includedEdges.length} links${inferredEdgesCount > 0 ? ` · min confidence ${Math.round(minConfidence * 100)}` : ''}`,
 			filenameBase: shownName(selectedNode.name, selectedNode.original),
 			nodes: exportNodes,
 			edges: includedEdges.map((e) => ({
@@ -598,7 +599,8 @@
 				kind: e.kind,
 				code: e.code,
 				directed: e.directed,
-				seiyuuDriven: e.seiyuuDriven
+				seiyuuDriven: e.seiyuuDriven,
+				confidence: e.register === 'inferred' && e.confidence != null ? Math.round(e.confidence * 100) : null
 			})),
 			dumpYear
 		});
@@ -644,6 +646,7 @@
 			kind: RelationKind;
 			code: string;
 			directed: boolean;
+			confidence?: number | null;
 		}> = [];
 		const expPath = cmp.explicitPath ?? [];
 		for (let i = 1; i < expPath.length; i++) {
@@ -667,14 +670,16 @@
 				register: 'inferred',
 				kind: meta.kind,
 				code: meta.code,
-				directed: false
+				directed: false,
+				confidence: Math.round(cmp.inferred.confidence * 100)
 			});
 		}
 		const nameA = shownName(cmp.producerA.name, cmp.producerA.original ?? null);
 		const nameB = shownName(cmp.producerB.name, cmp.producerB.original ?? null);
+		const cmpConfSub = cmp.inferred ? ` · inferred confidence ${Math.round(cmp.inferred.confidence * 100)}` : '';
 		exportTimelineSubgraphPng({
 			title: `${nameA} vs ${nameB}`,
-			subtitle: `${cmp.sharedTotals.core} shared core staff · ${cmp.sharedTotals.seiyuu} shared seiyuu`,
+			subtitle: `${cmp.sharedTotals.core} shared core staff · ${cmp.sharedTotals.seiyuu} shared seiyuu${cmpConfSub}`,
 			filenameBase: `${nameA}-vs-${nameB}`,
 			nodes: exportNodes,
 			edges: exportEdges,

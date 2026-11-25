@@ -207,7 +207,8 @@
 				lastYear: n.lastYear,
 				vnCount: n.vnCount,
 				isFocus: n.isFocus,
-				group: bandGroup[n.band] ?? 4
+				group: bandGroup[n.band] ?? 4,
+				inferredScore: n.inferredScore ?? null
 			}));
 		const exportEdges = layout.edges.map((e) => {
 			const src = e.source;
@@ -242,12 +243,13 @@
 				kind: e.kind,
 				code: e.code,
 				directed,
-				seiyuuDriven: e.seiyuuDriven
+				seiyuuDriven: e.seiyuuDriven,
+				confidence: e.register === 'inferred' ? e.score : null
 			};
 		});
 		exportTimelineSubgraphPng({
 			title: `${focusShown} — Relationship Timeline`,
-			subtitle: `${exportNodes.length} studios · ${shownExplicit} VNDB · ${shownInferred} inferred · ${layout.minYear}–${layout.maxYear}`,
+			subtitle: `${exportNodes.length} studios · ${shownExplicit} VNDB · ${shownInferred} inferred${shownInferred > 0 ? ` (min confidence ${filters.minConfidence})` : ''} · ${layout.minYear}–${layout.maxYear}`,
 			filenameBase: focusShown,
 			nodes: exportNodes,
 			edges: exportEdges,

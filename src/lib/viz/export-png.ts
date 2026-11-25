@@ -282,8 +282,10 @@ export interface ExportStudioNode {
 	lastYear: number | null;
 	vnCount: number;
 	isFocus: boolean;
-	/** Group bucket for clean vertical ordering: 0=owners, 1=focus, 2=lineage, 3=children, 4=peers */
+	/** Group bucket for clean vertical ordering: 0=owners, 1=in-lineage, 2=focus, 3=children, 4=out-lineage, 5=peers */
 	group: number;
+	/** Highest inferred confidence score (0–100) linking this studio to the focus, if any. */
+	inferredScore?: number | null;
 }
 
 export interface ExportStudioEdge {
@@ -294,6 +296,8 @@ export interface ExportStudioEdge {
 	code: string;
 	directed: boolean;
 	seiyuuDriven?: boolean;
+	/** Confidence score (0–100) for inferred edges. */
+	confidence?: number | null;
 }
 
 export function exportTimelineSubgraphPng(opts: {
@@ -343,6 +347,16 @@ export function exportTimelineSubgraphPng(opts: {
 	const pos = new Map<string, { x: number; endX: number; y: number; r: number; node: ExportStudioNode }>();
 	const bodyTop = headerH + rulerH + padY;
 
+	// Derive per-node best inferred confidence score if not explicitly provided
+	const nodeBestConf = new Map<string, number>();
+	for (const e of opts.edges) {
+		if (e.register === 'inferred' && e.confidence != null) {
+			const sc = Math.round(e.confidence);
+			nodeBestConf.set(e.source, Math.max(nodeBestConf.get(e.source) ?? -1, sc));
+			nodeBestConf.set(e.target, Math.max(nodeBestConf.get(e.target) ?? -1, sc));
+		}
+	}
+
 	ordered.forEach((n, idx) => {
 		const y = bodyTop + idx * rowH + rowH / 2;
 		const sy = validYr(n.firstYear) ? n.firstYear : fallbackYear;
@@ -367,13 +381,42 @@ export function exportTimelineSubgraphPng(opts: {
 			ctx.restore();
 		}
 
+		// Prominent confidence pill in left gutter for inferred-linked non-focus studios
+		const rowConf = !n.isFocus ? (n.inferredScore ?? nodeBestConf.get(n.id) ?? null) : null;
+		let labelRight = leftGutter - 18;
+		if (rowConf != null && rowConf >= 0) {
+			const badgeText = `${rowConf}`;
+			ctx.save();
+			ctx.font = `700 10.5px ${p.fontMono}`;
+			const bw = Math.max(30, ctx.measureText(badgeText).width + 12);
+			const bh = 20;
+			const bx = leftGutter - 14 - bw;
+			const by = y - bh / 2;
+			ctx.fillStyle = p.surfaceRaised;
+			ctx.beginPath();
+			ctx.roundRect(bx, by, bw, bh, 5);
+			ctx.fill();
+			ctx.strokeStyle = p.inferred;
+			ctx.lineWidth = 1.25;
+			ctx.setLineDash([3, 2]);
+			ctx.stroke();
+			ctx.setLineDash([]);
+			ctx.fillStyle = p.inferred;
+			ctx.textAlign = 'center';
+			ctx.textBaseline = 'middle';
+			ctx.fillText(badgeText, bx + bw / 2, y + 0.5);
+			ctx.restore();
+			labelRight = bx - 10;
+		}
+
 		// Left lane label (full untruncated name + year span)
 		ctx.fillStyle = n.isFocus ? p.ink : p.ink2;
 		ctx.font = `${n.isFocus ? 700 : 500} 12px ${p.fontSans}`;
 		ctx.textAlign = 'right';
 		ctx.textBaseline = 'middle';
-		const lbl = n.label.length > 30 ? n.label.slice(0, 28) + '…' : n.label;
-		ctx.fillText(lbl, leftGutter - 18, y - 6);
+		const maxChars = rowConf != null ? 24 : 30;
+		const lbl = n.label.length > maxChars ? n.label.slice(0, maxChars - 2) + '…' : n.label;
+		ctx.fillText(lbl, labelRight, y - 6);
 
 		ctx.fillStyle = p.ink3;
 		ctx.font = `500 9.5px ${p.fontMono}`;
@@ -382,7 +425,7 @@ export function exportTimelineSubgraphPng(opts: {
 				? `${n.firstYear}–${n.lastYear}`
 				: `${n.firstYear}`
 			: 'undated';
-		ctx.fillText(`${yrTxt}${n.vnCount ? ` · ${n.vnCount} VNs` : ''}`, leftGutter - 18, y + 9);
+		ctx.fillText(`${yrTxt}${n.vnCount ? ` · ${n.vnCount} VNs` : ''}`, labelRight, y + 9);
 	});
 
 	// Draw lifelines first
@@ -434,7 +477,14 @@ export function exportTimelineSubgraphPng(opts: {
 	}
 	const rowYs = [...pos.values()].map((pt) => pt.y);
 
-	const pillsToDraw: Array<{ x: number; y: number; text: string; color: string; inferred: boolean }> = [];
+	const pillsToDraw: Array<{
+		x: number;
+		y: number;
+		text: string;
+		scoreText: string | null;
+		color: string;
+		inferred: boolean;
+	}> = [];
 	const arrowheadsToDraw: Array<{ tipX: number; tipY: number; fromX: number; fromY: number; color: string }> = [];
 	const originDotsToDraw: Array<{ x: number; y: number; color: string }> = [];
 
@@ -554,13 +604,22 @@ export function exportTimelineSubgraphPng(opts: {
 		ctx.setLineDash([]);
 		ctx.restore();
 
-		// Place pill label cleanly in the open lane between studio lifelines, with a clear direction glyph
+		// Place pill label cleanly in the open lane between studio lifelines, with direction glyph + prominent confidence badge
+		const cleanCode = e.code.replace(/^[↑↓←→↖↗↘↙]\s*/, '');
 		const pillText = e.directed
-			? `${directionArrowGlyph(toX - fromX, toY - fromY)} ${e.code}`
-			: e.code;
+			? `${directionArrowGlyph(toX - fromX, toY - fromY)} ${cleanCode}`
+			: cleanCode;
+		const scoreText =
+			e.register === 'inferred' && e.confidence != null ? `${Math.round(e.confidence)}` : null;
 		ctx.font = `600 10.5px ${p.fontSans}`;
-		const tw = ctx.measureText(pillText).width + 16;
-		const th = 19;
+		const mainW = ctx.measureText(pillText).width;
+		let scoreW = 0;
+		if (scoreText) {
+			ctx.font = `700 10.5px ${p.fontMono}`;
+			scoreW = ctx.measureText(scoreText).width + 10;
+		}
+		const tw = mainW + scoreW + 18;
+		const th = 21;
 
 		// Prefer candidate points on the curve that do NOT sit on top of any studio lifeline or other pill
 		const candidates = [0.5, 0.42, 0.58, 0.34, 0.66, 0.26, 0.74];
@@ -590,7 +649,14 @@ export function exportTimelineSubgraphPng(opts: {
 			});
 		}
 		if (chosen) {
-			pillsToDraw.push({ x: chosen.x, y: chosen.y, text: pillText, color, inferred: e.register === 'inferred' });
+			pillsToDraw.push({
+				x: chosen.x,
+				y: chosen.y,
+				text: pillText,
+				scoreText,
+				color,
+				inferred: e.register === 'inferred'
+			});
 		}
 	}
 
@@ -625,29 +691,60 @@ export function exportTimelineSubgraphPng(opts: {
 		ctx.restore();
 	}
 
-	// Draw mid-edge pills on top
+	// Draw mid-edge pills on top (with prominent confidence score segment on inferred links)
 	ctx.save();
-	ctx.font = `600 10.5px ${p.fontSans}`;
-	ctx.textAlign = 'center';
 	ctx.textBaseline = 'middle';
 	for (const pill of pillsToDraw) {
-		const tw = ctx.measureText(pill.text).width + 14;
-		const th = 19;
+		ctx.font = `600 10.5px ${p.fontSans}`;
+		const mainW = ctx.measureText(pill.text).width;
+		let scoreW = 0;
+		if (pill.scoreText) {
+			ctx.font = `700 10.5px ${p.fontMono}`;
+			scoreW = ctx.measureText(pill.scoreText).width + 10;
+		}
+		const padX = 8;
+		const tw = mainW + scoreW + padX * 2;
+		const th = 21;
+		const leftX = pill.x - tw / 2;
+
 		ctx.fillStyle = p.surfaceRaised;
 		ctx.beginPath();
-		ctx.roundRect(pill.x - tw / 2, pill.y - th / 2, tw, th, th / 2);
+		ctx.roundRect(leftX, pill.y - th / 2, tw, th, th / 2);
 		ctx.fill();
 		ctx.strokeStyle = pill.color;
-		ctx.lineWidth = 1.3;
+		ctx.lineWidth = 1.35;
 		if (pill.inferred) ctx.setLineDash([3, 2]);
 		ctx.stroke();
 		ctx.setLineDash([]);
-		ctx.fillStyle = p.ink;
-		ctx.fillText(pill.text, pill.x, pill.y + 0.5);
+
+		if (pill.scoreText) {
+			// Draw label on left, subtle hairline divider, bold inferred confidence score on right
+			ctx.font = `600 10.5px ${p.fontSans}`;
+			ctx.textAlign = 'left';
+			ctx.fillStyle = p.ink;
+			ctx.fillText(pill.text, leftX + padX, pill.y + 0.5);
+
+			const divX = leftX + padX + mainW + 5;
+			ctx.strokeStyle = p.ruleStrong;
+			ctx.lineWidth = 1;
+			ctx.beginPath();
+			ctx.moveTo(divX, pill.y - 6);
+			ctx.lineTo(divX, pill.y + 6);
+			ctx.stroke();
+
+			ctx.font = `700 10.5px ${p.fontMono}`;
+			ctx.fillStyle = p.inferred;
+			ctx.fillText(pill.scoreText, divX + 5, pill.y + 0.5);
+		} else {
+			ctx.font = `600 10.5px ${p.fontSans}`;
+			ctx.textAlign = 'center';
+			ctx.fillStyle = p.ink;
+			ctx.fillText(pill.text, pill.x, pill.y + 0.5);
+		}
 	}
 	ctx.restore();
 
-	// Footer legend (including explicit source → target direction marker)
+	// Footer legend (including explicit source → target direction marker & confidence key)
 	const ly = h - footerH / 2;
 	let lx = 24;
 	const legendItems: Array<{ label: string; color: string; dashed?: boolean }> = [
@@ -673,9 +770,12 @@ export function exportTimelineSubgraphPng(opts: {
 		ctx.fillText(it.label, lx + 24, ly + 0.5);
 		lx += ctx.measureText(it.label).width + 44;
 	}
-	// Direction key on right side of footer
+	// Direction & confidence key on right side of footer
 	ctx.save();
-	const dirLabel = 'Source ● ──▶ Target';
+	const hasAnyInferred = opts.edges.some((e) => e.register === 'inferred' && e.confidence != null);
+	const dirLabel = hasAnyInferred
+		? 'Scores = inferred confidence (0–100)   ·   Source ● ──▶ Target'
+		: 'Source ● ──▶ Target';
 	ctx.fillStyle = p.ink3;
 	ctx.font = `500 10px ${p.fontMono}`;
 	ctx.textAlign = 'right';
